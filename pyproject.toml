@@ -1,0 +1,17 @@
+[build-system]
+requires = ["setuptools>=68"]
+build-backend = "setuptools.build_meta"
+
+[project]
+name = "ml-project-assistive-vision"
+version = "0.1.0"
+description = "Camera-based assistive vision prototype with Kazakh audio cues"
+requires-python = ">=3.10,<3.13"
+dependencies = [
+    "ultralytics>=8.3,<9",
+    "opencv-python>=4.10,<5",
+    "pyttsx3>=2.98,<3",
+]
+
+[tool.setuptools.packages.find]
+where = ["src"]
