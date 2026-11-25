@@ -65,9 +65,12 @@
       const data = await response.json(); if (!response.ok) throw new Error(data.error || 'Қате пайда болды.');
       const objects = data.objects || [];
       if (!objects.length) { result.textContent = 'Нысан анықталмады.'; detail.textContent = 'Камера көрінісінен таныс нысан табылған жоқ.'; previous = ''; status.textContent = 'Көрініс тексеріліп жатыр.'; return; }
-      const first = objects[0]; result.textContent = first.message; detail.textContent = objects.length > 1 ? `Тағы ${objects.length - 1} нысан көрінді.` : `Сенімділік: ${Math.round(first.confidence * 100)}%.`;
+      const visibleObjects = objects.slice(0, 5);
+      result.textContent = visibleObjects.map(item => `${item.message} (${Math.round(item.confidence * 100)}%)`).join(' ');
+      detail.textContent = `Барлығы ${objects.length} нысан анықталды. Дауыс алғашқы ${Math.min(3, objects.length)} нысанды айтады.`;
+      const speechText = objects.slice(0, 3).map(item => item.message).join(' ');
       status.textContent = 'Көрініс тексеріліп жатыр.';
-      if (first.message !== previous || Date.now() - lastSpeech > 5000) { say(first.message); lastSpeech = Date.now(); previous = first.message; }
+      if (speechText !== previous || Date.now() - lastSpeech > 5000) { say(speechText); lastSpeech = Date.now(); previous = speechText; }
     } catch (error) { status.textContent = error.message || 'Серверге қосыла алмады.'; }
     finally { busy = false; }
   }

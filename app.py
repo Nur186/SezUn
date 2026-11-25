@@ -47,7 +47,7 @@ def detect():
             "confidence": round(item.confidence, 2),
             "box": list(item.box),
             "message": make_guidance(item, frame.shape[1]),
-        } for item in found[:5]])
+        } for item in found[:8]])
     except Exception:
         logging.exception("Кадрды өңдеу сәтсіз аяқталды")
         return jsonify(error="Кадрды өңдеу мүмкін болмады. Сервер журналын тексеріңіз."), 500
