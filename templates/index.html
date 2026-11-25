@@ -77,7 +77,8 @@
     finally { busy = false; }
   }
   async function openCamera() {
-    stream = await navigator.mediaDevices.getUserMedia({video:{facingMode:{exact:facingMode}},audio:false});
+    if (!navigator.mediaDevices?.getUserMedia) throw new Error('Камера браузерде қолжетімсіз. Сайтты localhost немесе HTTPS арқылы ашыңыз.');
+    stream = await navigator.mediaDevices.getUserMedia({video:{facingMode:{ideal:facingMode}},audio:false});
     video.srcObject = stream; await video.play();
     video.classList.add('active'); placeholder.hidden = true; live.classList.add('active');
     start.disabled = true; stop.disabled = false; switchCamera.disabled = false;
@@ -87,7 +88,11 @@
   start.addEventListener('click', async () => {
     start.disabled = true; status.textContent = 'Камераға қосылып жатыр…';
     try { await openCamera(); }
-    catch (error) { start.disabled = false; status.textContent = error.name === 'NotAllowedError' ? 'Камераға рұқсат берілмеді. Браузер баптауынан рұқсат беріңіз.' : 'Камера қосылмады. Қосылғанын тексеріп, қайта көріңіз.'; }
+    catch (error) {
+      start.disabled = false;
+      const messages = {NotAllowedError:'Камераға рұқсат берілмеді. Браузер мен Windows құпиялылық баптауынан рұқсат беріңіз.', NotFoundError:'Компьютерден камера табылмады.', NotReadableError:'Камера бос емес. Оны қолданып тұрған басқа бағдарламаны жабыңыз.', OverconstrainedError:'Бұл камера таңдалған режимді қолдамайды.'};
+      status.textContent = messages[error.name] || error.message || 'Камера қосылмады. localhost немесе HTTPS арқылы ашып көріңіз.';
+    }
   });
   switchCamera.addEventListener('click', async () => {
     const previousMode = facingMode; clearInterval(timer); timer = null; previous = ''; repeatCount = 0; lastDetectionAt = 0;
