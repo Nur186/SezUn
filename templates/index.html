@@ -44,16 +44,16 @@
   const video = document.querySelector('#camera'), start = document.querySelector('#start'), stop = document.querySelector('#stop'), switchCamera = document.querySelector('#switch-camera');
   const status = document.querySelector('#status'), result = document.querySelector('#result'), detail = document.querySelector('#detail');
   const placeholder = document.querySelector('#placeholder'), live = document.querySelector('#live'), voice = document.querySelector('#voice'), voiceTest = document.querySelector('#voice-test');
-  const canvas = document.createElement('canvas'); let stream = null, timer = null, busy = false, previous = '', lastSpeech = 0, facingMode = 'environment';
+  const canvas = document.createElement('canvas'); let stream = null, timer = null, busy = false, previous = '', lastSpeech = 0, repeatCount = 0, lastDetectionAt = 0, facingMode = 'environment';
   const say = (text, force = false) => {
-    if (!force && !voice.checked) return;
-    if (!('speechSynthesis' in window) || !('SpeechSynthesisUtterance' in window)) { status.textContent = 'Бұл браузерде дауыстап айту қолжетімсіз. Chrome немесе Edge қолданып көріңіз.'; return; }
+    if (!force && !voice.checked) return false;
+    if (!('speechSynthesis' in window) || !('SpeechSynthesisUtterance' in window)) { status.textContent = 'Бұл браузерде дауыстап айту қолжетімсіз. Chrome немесе Edge қолданып көріңіз.'; return false; }
     const utterance = new SpeechSynthesisUtterance(text); utterance.lang = 'kk-KZ'; utterance.rate = 0.92;
     const kazakhVoice = speechSynthesis.getVoices().find(item => item.lang.toLowerCase().startsWith('kk'));
     if (kazakhVoice) utterance.voice = kazakhVoice;
     utterance.onstart = () => { status.textContent = 'Дауыс ойнатылып жатыр.'; };
     utterance.onerror = () => { status.textContent = 'Дауыс ойнатылмады. Құрылғы дыбысын және браузердің сөйлеу баптауын тексеріңіз.'; };
-    speechSynthesis.cancel(); speechSynthesis.resume(); speechSynthesis.speak(utterance);
+    speechSynthesis.cancel(); speechSynthesis.resume(); speechSynthesis.speak(utterance); return true;
   };
   voiceTest.addEventListener('click', () => say('Қазақша дауыс тексеріліп жатыр. Дыбыс естілсе, дауыс жұмыс істейді.', true));
   async function scan() {
@@ -64,13 +64,15 @@
       const response = await fetch('/detect', {method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({image:canvas.toDataURL('image/jpeg',.72)})});
       const data = await response.json(); if (!response.ok) throw new Error(data.error || 'Қате пайда болды.');
       const objects = data.objects || [];
-      if (!objects.length) { result.textContent = 'Нысан анықталмады.'; detail.textContent = 'Камера көрінісінен таныс нысан табылған жоқ.'; previous = ''; status.textContent = 'Көрініс тексеріліп жатыр.'; return; }
+      if (!objects.length) { result.textContent = 'Нысан анықталмады.'; detail.textContent = 'Камера көрінісінен таныс нысан табылған жоқ.'; if (Date.now() - lastDetectionAt > 5000) { previous = ''; repeatCount = 0; } status.textContent = 'Көрініс тексеріліп жатыр.'; return; }
       const visibleObjects = objects.slice(0, 5);
       result.textContent = visibleObjects.map(item => `${item.message} (${Math.round(item.confidence * 100)}%)`).join(' ');
       detail.textContent = `Барлығы ${objects.length} нысан анықталды. Дауыс алғашқы ${Math.min(3, objects.length)} нысанды айтады.`;
       const speechText = objects.slice(0, 3).map(item => item.message).join(' ');
+      const now = Date.now(); lastDetectionAt = now;
       status.textContent = 'Көрініс тексеріліп жатыр.';
-      if (speechText !== previous || Date.now() - lastSpeech > 5000) { say(speechText); lastSpeech = Date.now(); previous = speechText; }
+      if (speechText !== previous) { previous = speechText; repeatCount = 0; }
+      if (repeatCount < 2 && (repeatCount === 0 || now - lastSpeech >= 4000) && say(speechText)) { repeatCount += 1; lastSpeech = now; }
     } catch (error) { status.textContent = error.message || 'Серверге қосыла алмады.'; }
     finally { busy = false; }
   }
@@ -88,7 +90,7 @@
     catch (error) { start.disabled = false; status.textContent = error.name === 'NotAllowedError' ? 'Камераға рұқсат берілмеді. Браузер баптауынан рұқсат беріңіз.' : 'Камера қосылмады. Қосылғанын тексеріп, қайта көріңіз.'; }
   });
   switchCamera.addEventListener('click', async () => {
-    const previousMode = facingMode; clearInterval(timer); timer = null;
+    const previousMode = facingMode; clearInterval(timer); timer = null; previous = ''; repeatCount = 0; lastDetectionAt = 0;
     if (stream) stream.getTracks().forEach(track => track.stop()); stream = null; video.srcObject = null;
     switchCamera.disabled = true; stop.disabled = true; status.textContent = 'Камера ауыстырылып жатыр…';
     facingMode = previousMode === 'environment' ? 'user' : 'environment';
@@ -98,7 +100,7 @@
       status.textContent = error.name === 'OverconstrainedError' ? 'Бұл бағыттағы камера құрылғыда жоқ.' : 'Камера ауыспады. Браузердің камера рұқсатын тексеріңіз.';
     }
   });
-  stop.addEventListener('click', () => { clearInterval(timer); timer = null; if (stream) stream.getTracks().forEach(track => track.stop()); stream = null; video.srcObject = null;
+  stop.addEventListener('click', () => { clearInterval(timer); timer = null; previous = ''; repeatCount = 0; lastDetectionAt = 0; if (stream) stream.getTracks().forEach(track => track.stop()); stream = null; video.srcObject = null;
     video.classList.remove('active'); placeholder.hidden = false; live.classList.remove('active'); start.disabled = false; stop.disabled = true; switchCamera.disabled = true; status.textContent = 'Камера тоқтатылды.'; if ('speechSynthesis' in window) speechSynthesis.cancel(); });
 })();
 </script>
