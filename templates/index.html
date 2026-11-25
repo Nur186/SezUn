@@ -26,7 +26,7 @@
   <div class="layout">
     <section class="panel" aria-label="Камера көрінісі">
       <div class="camera"><video id="camera" autoplay muted playsinline aria-label="Камерадан тікелей көрініс"></video><div id="placeholder" class="placeholder"><span aria-hidden="true">◉</span>Камераны қосу үшін батырманы басыңыз</div><div class="live" id="live"><i></i>Камера қосулы</div></div>
-      <div class="controls"><button class="primary" id="start">Камераны қосу</button><button class="secondary" id="stop" disabled>Тоқтату</button></div>
+      <div class="controls"><button class="primary" id="start">Камераны қосу</button><button class="secondary" id="switch-camera" disabled>Алдыңғы камераға ауысу</button><button class="secondary" id="stop" disabled>Тоқтату</button></div>
       <div class="status" id="status" role="status" aria-live="polite">Дайын. Камераны қосыңыз.</div>
     </section>
     <aside class="panel" aria-label="Анықтау нәтижесі">
@@ -41,10 +41,10 @@
 </main>
 <script>
 (() => {
-  const video = document.querySelector('#camera'), start = document.querySelector('#start'), stop = document.querySelector('#stop');
+  const video = document.querySelector('#camera'), start = document.querySelector('#start'), stop = document.querySelector('#stop'), switchCamera = document.querySelector('#switch-camera');
   const status = document.querySelector('#status'), result = document.querySelector('#result'), detail = document.querySelector('#detail');
   const placeholder = document.querySelector('#placeholder'), live = document.querySelector('#live'), voice = document.querySelector('#voice'), voiceTest = document.querySelector('#voice-test');
-  const canvas = document.createElement('canvas'); let stream = null, timer = null, busy = false, previous = '', lastSpeech = 0;
+  const canvas = document.createElement('canvas'); let stream = null, timer = null, busy = false, previous = '', lastSpeech = 0, facingMode = 'environment';
   const say = (text, force = false) => {
     if (!force && !voice.checked) return;
     if (!('speechSynthesis' in window) || !('SpeechSynthesisUtterance' in window)) { status.textContent = 'Бұл браузерде дауыстап айту қолжетімсіз. Chrome немесе Edge қолданып көріңіз.'; return; }
@@ -74,15 +74,32 @@
     } catch (error) { status.textContent = error.message || 'Серверге қосыла алмады.'; }
     finally { busy = false; }
   }
+  async function openCamera() {
+    stream = await navigator.mediaDevices.getUserMedia({video:{facingMode:{exact:facingMode}},audio:false});
+    video.srcObject = stream; await video.play();
+    video.classList.add('active'); placeholder.hidden = true; live.classList.add('active');
+    start.disabled = true; stop.disabled = false; switchCamera.disabled = false;
+    switchCamera.textContent = facingMode === 'environment' ? 'Алдыңғы камераға ауысу' : 'Артқы камераға ауысу';
+    status.textContent = 'Көрініс тексеріліп жатыр.'; timer = setInterval(scan, 1300); scan();
+  }
   start.addEventListener('click', async () => {
     start.disabled = true; status.textContent = 'Камераға қосылып жатыр…';
-    try { stream = await navigator.mediaDevices.getUserMedia({video:{facingMode:'environment'},audio:false}); video.srcObject = stream; await video.play();
-      video.classList.add('active'); placeholder.hidden = true; live.classList.add('active'); start.disabled = true; stop.disabled = false;
-      status.textContent = 'Көрініс тексеріліп жатыр.'; timer = setInterval(scan, 1300); scan();
-    } catch (error) { start.disabled = false; status.textContent = error.name === 'NotAllowedError' ? 'Камераға рұқсат берілмеді. Браузер баптауынан рұқсат беріңіз.' : 'Камера қосылмады. Қосылғанын тексеріп, қайта көріңіз.'; }
+    try { await openCamera(); }
+    catch (error) { start.disabled = false; status.textContent = error.name === 'NotAllowedError' ? 'Камераға рұқсат берілмеді. Браузер баптауынан рұқсат беріңіз.' : 'Камера қосылмады. Қосылғанын тексеріп, қайта көріңіз.'; }
+  });
+  switchCamera.addEventListener('click', async () => {
+    const previousMode = facingMode; clearInterval(timer); timer = null;
+    if (stream) stream.getTracks().forEach(track => track.stop()); stream = null; video.srcObject = null;
+    switchCamera.disabled = true; stop.disabled = true; status.textContent = 'Камера ауыстырылып жатыр…';
+    facingMode = previousMode === 'environment' ? 'user' : 'environment';
+    try { await openCamera(); }
+    catch (error) {
+      facingMode = previousMode; start.disabled = false; video.classList.remove('active'); placeholder.hidden = false; live.classList.remove('active');
+      status.textContent = error.name === 'OverconstrainedError' ? 'Бұл бағыттағы камера құрылғыда жоқ.' : 'Камера ауыспады. Браузердің камера рұқсатын тексеріңіз.';
+    }
   });
   stop.addEventListener('click', () => { clearInterval(timer); timer = null; if (stream) stream.getTracks().forEach(track => track.stop()); stream = null; video.srcObject = null;
-    video.classList.remove('active'); placeholder.hidden = false; live.classList.remove('active'); start.disabled = false; stop.disabled = true; status.textContent = 'Камера тоқтатылды.'; if ('speechSynthesis' in window) speechSynthesis.cancel(); });
+    video.classList.remove('active'); placeholder.hidden = false; live.classList.remove('active'); start.disabled = false; stop.disabled = true; switchCamera.disabled = true; status.textContent = 'Камера тоқтатылды.'; if ('speechSynthesis' in window) speechSynthesis.cancel(); });
 })();
 </script>
 </body>
