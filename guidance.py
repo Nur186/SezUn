@@ -1,4 +1,7 @@
-from .detector import Detection
+try:  # Support both package execution and direct local development.
+    from .detector import Detection
+except ImportError:
+    from detector import Detection
 
 KAZAKH_LABELS = {
     "person": "адам",

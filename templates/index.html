@@ -1,0 +1,75 @@
+<!doctype html>
+<html lang="kk">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <meta name="theme-color" content="#102a27">
+  <title>Көру көмекшісі</title>
+  <style>
+    :root{color-scheme:dark;--bg:#0b1716;--panel:#142522;--ink:#f4f7ee;--muted:#b9c9c2;--accent:#b8f36b;--line:#38514a}
+    *{box-sizing:border-box}body{margin:0;background:radial-gradient(ellipse at 50% -20%,#24453a,var(--bg) 65%);color:var(--ink);font:18px/1.55 system-ui,-apple-system,"Segoe UI",sans-serif;min-height:100vh}
+    main{max-width:900px;margin:auto;padding:36px 22px 48px}header{margin-bottom:25px}.eyebrow{color:var(--accent);font-weight:750;letter-spacing:.12em;text-transform:uppercase;font-size:.78rem}
+    h1{font-size:clamp(2.1rem,7vw,3.6rem);line-height:1.05;margin:10px 0 12px;letter-spacing:-.04em}header p{color:var(--muted);max-width:650px;margin:0}
+    .layout{display:grid;grid-template-columns:minmax(0,1.55fr) minmax(230px,.8fr);gap:18px}.panel{background:var(--panel);border:1px solid var(--line);border-radius:22px;padding:20px;box-shadow:0 18px 60px #0003}.camera{position:relative;min-height:300px;background:#08100f;border-radius:15px;overflow:hidden;display:grid;place-items:center}video{width:100%;height:100%;min-height:300px;object-fit:cover;display:none}video.active{display:block}.placeholder{color:var(--muted);text-align:center;padding:30px}.placeholder span{font-size:3rem;display:block;margin-bottom:8px}.live{position:absolute;top:13px;left:13px;padding:5px 10px;border-radius:99px;background:#172b26d9;font-size:.8rem;display:none}.live.active{display:block}.live i{display:inline-block;width:9px;height:9px;background:var(--accent);border-radius:50%;margin-right:7px}
+    .controls{display:flex;gap:12px;margin-top:15px;flex-wrap:wrap}button{font:inherit;font-weight:750;border:0;border-radius:13px;padding:12px 18px;min-height:54px;cursor:pointer}button:focus-visible{outline:3px solid white;outline-offset:3px}button:disabled{opacity:.5;cursor:wait}.primary{background:var(--accent);color:#142017;flex:1}.secondary{background:#263b36;color:var(--ink);border:1px solid #456058}.status{margin:13px 2px 0;color:var(--muted);min-height:1.5em}
+    h2{font-size:1.1rem;margin:2px 0 8px}.result{color:var(--accent);font-size:1.2rem;font-weight:700;min-height:3.1em}.hint{color:var(--muted);font-size:.95rem}.switch-row{display:flex;align-items:center;gap:12px;margin:20px 0 8px}.switch-row input{width:24px;height:24px;accent-color:var(--accent)}.notice{margin-top:18px;border-left:4px solid var(--accent);padding:12px 15px;color:var(--muted);background:#172824;border-radius:0 12px 12px 0;font-size:.9rem}
+    @media(max-width:690px){main{padding:25px 15px}.layout{grid-template-columns:1fr}.camera,video{min-height:230px}.panel{padding:15px}}
+  </style>
+</head>
+<body>
+<main>
+  <header>
+    <div class="eyebrow">Камера арқылы көмекші</div>
+    <h1>Көру көмекшісі</h1>
+    <p>Камера көріністегі таныс нысандарды іздеп, олардың атауы мен қай жақта тұрғанын дауыстап айтады.</p>
+  </header>
+  <div class="layout">
+    <section class="panel" aria-label="Камера көрінісі">
+      <div class="camera"><video id="camera" autoplay muted playsinline aria-label="Камерадан тікелей көрініс"></video><div id="placeholder" class="placeholder"><span aria-hidden="true">◉</span>Камераны қосу үшін батырманы басыңыз</div><div class="live" id="live"><i></i>Камера қосулы</div></div>
+      <div class="controls"><button class="primary" id="start">Камераны қосу</button><button class="secondary" id="stop" disabled>Тоқтату</button></div>
+      <div class="status" id="status" role="status" aria-live="polite">Дайын. Камераны қосыңыз.</div>
+    </section>
+    <aside class="panel" aria-label="Анықтау нәтижесі">
+      <h2>Соңғы анықтау</h2><div class="result" id="result" aria-live="polite">Әзірге нысан жоқ.</div>
+      <p class="hint" id="detail">Камера іске қосылғанда нәтиже осында көрсетіледі.</p>
+      <label class="switch-row"><input id="voice" type="checkbox" checked><span>Дауыстап айту</span></label>
+      <p class="hint">Дауыс браузерде ойнатылады.</p>
+    </aside>
+  </div>
+  <div class="notice"><strong>Ескерту:</strong> бұл — тәжірибелік жоба. Ол кедергілерді өткізіп алуы немесе қате тануы мүмкін; қауіпсіз жүруге арналған құралдардың орнына қолданбаңыз.</div>
+</main>
+<script>
+(() => {
+  const video = document.querySelector('#camera'), start = document.querySelector('#start'), stop = document.querySelector('#stop');
+  const status = document.querySelector('#status'), result = document.querySelector('#result'), detail = document.querySelector('#detail');
+  const placeholder = document.querySelector('#placeholder'), live = document.querySelector('#live'), voice = document.querySelector('#voice');
+  const canvas = document.createElement('canvas'); let stream = null, timer = null, busy = false, previous = '', lastSpeech = 0;
+  const say = text => { if (!voice.checked || !('speechSynthesis' in window)) return; speechSynthesis.cancel(); const utterance = new SpeechSynthesisUtterance(text); utterance.lang = 'kk-KZ'; utterance.rate = 0.92; speechSynthesis.speak(utterance); };
+  async function scan() {
+    if (!stream || busy || video.readyState < 2) return; busy = true;
+    try {
+      canvas.width = video.videoWidth; canvas.height = video.videoHeight;
+      canvas.getContext('2d').drawImage(video, 0, 0, canvas.width, canvas.height);
+      const response = await fetch('/detect', {method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({image:canvas.toDataURL('image/jpeg',.72)})});
+      const data = await response.json(); if (!response.ok) throw new Error(data.error || 'Қате пайда болды.');
+      const objects = data.objects || [];
+      if (!objects.length) { result.textContent = 'Нысан анықталмады.'; detail.textContent = 'Камера көрінісінен таныс нысан табылған жоқ.'; previous = ''; status.textContent = 'Көрініс тексеріліп жатыр.'; return; }
+      const first = objects[0]; result.textContent = first.message; detail.textContent = objects.length > 1 ? `Тағы ${objects.length - 1} нысан көрінді.` : `Сенімділік: ${Math.round(first.confidence * 100)}%.`;
+      status.textContent = 'Көрініс тексеріліп жатыр.';
+      if (first.message !== previous || Date.now() - lastSpeech > 5000) { say(first.message); lastSpeech = Date.now(); previous = first.message; }
+    } catch (error) { status.textContent = error.message || 'Серверге қосыла алмады.'; }
+    finally { busy = false; }
+  }
+  start.addEventListener('click', async () => {
+    start.disabled = true; status.textContent = 'Камераға қосылып жатыр…';
+    try { stream = await navigator.mediaDevices.getUserMedia({video:{facingMode:'environment'},audio:false}); video.srcObject = stream; await video.play();
+      video.classList.add('active'); placeholder.hidden = true; live.classList.add('active'); start.disabled = true; stop.disabled = false;
+      status.textContent = 'Көрініс тексеріліп жатыр.'; timer = setInterval(scan, 1300); scan();
+    } catch (error) { start.disabled = false; status.textContent = error.name === 'NotAllowedError' ? 'Камераға рұқсат берілмеді. Браузер баптауынан рұқсат беріңіз.' : 'Камера қосылмады. Қосылғанын тексеріп, қайта көріңіз.'; }
+  });
+  stop.addEventListener('click', () => { clearInterval(timer); timer = null; if (stream) stream.getTracks().forEach(track => track.stop()); stream = null; video.srcObject = null;
+    video.classList.remove('active'); placeholder.hidden = false; live.classList.remove('active'); start.disabled = false; stop.disabled = true; status.textContent = 'Камера тоқтатылды.'; if ('speechSynthesis' in window) speechSynthesis.cancel(); });
+})();
+</script>
+</body>
+</html>

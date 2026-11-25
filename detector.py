@@ -2,7 +2,10 @@ from dataclasses import dataclass
 
 from ultralytics import YOLO
 
-from .config import CONFIDENCE_THRESHOLD
+try:
+    from .config import CONFIDENCE_THRESHOLD
+except ImportError:
+    from config import CONFIDENCE_THRESHOLD
 
 
 @dataclass(frozen=True)
