@@ -12,11 +12,11 @@ from flask import Flask, jsonify, render_template, request
 try:
     from .config import MODEL_NAME
     from .detector import ObjectDetector
-    from .guidance import make_guidance
+    from .guidance import kazakh_label, make_guidance
 except ImportError:  # python app.py from the project folder
     from config import MODEL_NAME
     from detector import ObjectDetector
-    from guidance import make_guidance
+    from guidance import kazakh_label, make_guidance
 
 app = Flask(__name__)
 detector: ObjectDetector | None = None
@@ -43,7 +43,7 @@ def detect():
             detector = ObjectDetector(MODEL_NAME)
         found = detector.detect(frame)
         return jsonify(objects=[{
-            "label": item.label,
+            "label": kazakh_label(item.label),
             "confidence": round(item.confidence, 2),
             "box": list(item.box),
             "message": make_guidance(item, frame.shape[1]),
