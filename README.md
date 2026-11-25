@@ -119,7 +119,7 @@
 
 ## Іске қосу
 
-Python 3.10 немесе 3.11 орнатып, жоба бумасында терминал ашыңыз:
+Python 3.10–3.13 орнатып, жоба бумасында терминал ашыңыз:
 
 ```powershell
 py -m venv .venv
@@ -147,6 +147,35 @@ python app.py
 - Python жағындағы Ultralytics YOLO ең ірі көрінген нысандарды анықтайды.
 - Сайт анықталған нысан мен сол/орта/оң орнын көрсетеді; қазақша дыбыстау браузердің сөйлеу қызметі арқылы орындалады.
 - Видео кадрлар дискіге жазылмайды, желіге жіберілмейді.
+
+## Зерттеу және бағалау
+
+Жоба нысан детекциясы болғандықтан CIFAR-100 емес, bounding box белгілеулері бар COCO128 пайдаланылады. COCO128 — COCO train2017 дерегінен алынған шағын 128 суреттік үлгі; ол оқу және кодты тексеруге қолайлы, бірақ үлкен ортаға жалпылауды дәлелдеуге жеткіліксіз. Дереккөз: [Ultralytics COCO128 конфигурациясы](https://github.com/ultralytics/ultralytics/blob/main/ultralytics/cfg/datasets/coco128.yaml), [COCO деректер жиыны](https://docs.ultralytics.com/datasets/detect/coco).
+
+Қайталанатын EDA, деректі тазалау, train/validation/test бөлу және модельдерді салыстыру:
+
+```powershell
+python experiments/project_workflow.py --prepare-only
+python experiments/project_workflow.py --epochs 10 --batch 8 --device cpu
+```
+
+GPU бар болса, `--device 0` деп таңдаңыз. Бірінші команда деректер жиынын жүктеп, бүлінген суреттер мен қате bbox белгілерін тексеріп, тазартылған бөліктерді дайындайды. Екінші команда алдын ала үйретілген YOLOv8n базалық моделін COCO128-де қосымша үйретілген YOLOv8n және YOLOv8s модельдерімен бірдей тест жиынында салыстырады. Есептер `reports/EDA.md`, `reports/model_comparison.md`, `reports/model_comparison.csv`, `reports/errors_*.csv` және `reports/figures/` ішінде сақталады. Жүктелген деректер мен үлкен модель салмақтары `reports/data/` және `reports/runs/` ішіне жазылып, Git-ке қосылмайды.
+
+Бағалау көрсеткіштері: Precision, Recall, mAP@0.5, mAP@0.5:0.95, бір суретті өңдеу уақыты және IoU≥0.5 бойынша TP/FP/FN қатесі. Тест бөлігі модельді үйретуде қолданылмайды. Нәтиже COCO128 аз болғандықтан алдын ала эксперимент ретінде қарастырылып, соңғы нұсқада үлкенірек арнайы test set-пен тексерілуі керек.
+
+## Қорғау рубрикасына сәйкестік
+
+| Рубрика тармағы | Жоба файлы немесе нәтиже |
+|---|---|
+| Мақсат пен міндеттер | README, `docs/PROJECT_REPORT.md` |
+| Мәселе, дерек көзі, негіздеме | `docs/PROJECT_REPORT.md`, EDA есебі |
+| Дерек дайындау және EDA | `experiments/project_workflow.py`, `reports/EDA.md`, графиктер |
+| Бастапқы және екі үйретілген модель | `reports/model_comparison.md`, `reports/runs/` |
+| Метрикалар мен қате талдауы | салыстыру кестесі, `reports/errors_*.csv`, confusion matrix |
+| Жұмыс істейтін веб прототип | Flask сервері, `templates/index.html` |
+| Код және іске қосу құжаты | GitHub, `requirements.txt`, осы README |
+| Қорғау жоспары және сұрақ/жауап | `docs/DEFENSE_NOTES.md` |
+| Жазбаша жоба есебі | `docs/PROJECT_REPORT.md` |
 
 ## Шектеулер
 

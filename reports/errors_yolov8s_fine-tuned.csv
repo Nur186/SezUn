@@ -1,0 +1,12 @@
+﻿image,tp,fp,fn,false_positive_classes,missed_classes
+000000000142.jpg,3,1,1,bottle,dining table
+000000000605.jpg,4,2,0,"cake, cake",
+000000000643.jpg,3,1,17,book,"book, book, book, book, book, book, book, book, book, teddy bear, bowl, mouse, book, book, book, book, bottle"
+000000000322.jpg,2,1,0,frisbee,
+000000000419.jpg,3,0,4,,"sports ball, car, car, car"
+000000000077.jpg,3,0,5,,"skateboard, skateboard, person, skateboard, person"
+000000000641.jpg,2,1,10,person,"bicycle, bicycle, person, person, person, person, person, person, person, person"
+000000000089.jpg,7,2,3,"oven, knife","book, book, book"
+000000000151.jpg,2,0,1,,person
+000000000192.jpg,4,2,1,"baseball bat, baseball glove",baseball bat
+000000000143.jpg,7,0,1,,bird
